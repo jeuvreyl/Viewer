@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="modal fade" id="viewModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-body">
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+
+<div class="modal fade" id="uploadModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <form action="/upload" method="post" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    <input name="uploaded_images" type=file multiple name="file[]"/>
+                    <input type="submit" value="upload"/>
+                </form>
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <ul>
+                    {% for message in messages %}
+                    <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<div class="panel panel-default">
+    <form action="/delete" method="post">
+        <ul class="row">
+            {% for image_id, thumbnail_id in images_ids.items %}
+            <li class="col-lg-2 col-md-2 col-sm-3 col-xs-4">
+                <a href="#" class="thumbnail">
+                    <div class="image">
+                        <input type="checkbox" name="ids" value=" {{ image_id }}"/>
+                        <img id="image_number_{{ image_id }}" class="img-responsive"
+                             src="{{ url_for('thumbnail', thumbnail_id=thumbnail_id) }} "
+                             alt="{{ url_for('image', image_id=image_id) }} "/>
+                    </div>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        <button id="uploadButton" type="button" class="btn btn-default">add images</button>
+        <input type="submit" value="delete selected images" class="btn btn-default"/>
+        {% if images_ids.has_prev %}
+        <a href="{{ url_for('list_images', page=1) }}" class="btn btn-default">Back to First Page</a>
+        <a href="{{ url_for('list_images', page=images_ids.prev_num) }}" class="btn btn-default">Previous Page</a>
+        {% endif %}
+        {% if images_ids.has_next %}
+        <a href="{{ url_for('list_images', page=images_ids.next_num) }}" class="btn btn-default">Next Page</a>
+        {% endif %}
+    </form>
+</div>
+<script>
+    $(document).ready(function(){
+
+           $('li img').on('click',function(){
+                var alt = $(this).attr('alt');
+                var img = '<img src="' + alt + '" class="img-responsive"/>';
+
+                $('#viewModal').modal();
+                $('#viewModal').on('shown.bs.modal', function(){
+                    $('#viewModal .modal-body').html(img);
+                });
+                $('#viewModal').on('hidden.bs.modal', function(){
+                    $('#viewModal .modal-body').html('');
+                });
+           });
+
+           $('#uploadButton').on('click',function(){
+                $('#uploadModal').modal();
+               });
+        })
+
+
+
+
+
+
+</script>
+{% endblock %}
