@@ -4,3 +4,5 @@ Use Flask for web part and Pillow for thumbnails, images are stored in a sqlite 
 
 Still have a LOT of room for improvements: functionnality / project structure / packaging / etc
 Will switch to Angular JS / Flask-REST one day.
+
+To use it first run the db_create.py in scripts folder, and start the in-built flask server with run.py
