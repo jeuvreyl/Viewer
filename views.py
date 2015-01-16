@@ -1,27 +1,68 @@
-
 __author__ = 'lolo'
 
 from io import BytesIO
 from flask import render_template, flash, redirect, url_for, send_file, request, g
-from Viewer import app, db, login_manager
-from Viewer.forms import UploadImageForm, RegistrationForm, LoginForm
+from Viewer import app, login_manager, db
 from Viewer.models import UploadedImage, User, UploadedThumbnail
 from werkzeug.utils import secure_filename
-from sqlalchemy.orm import exc
-from werkzeug.exceptions import abort
 from flask_login import login_user, login_required, logout_user, current_user
-from wtforms.validators import ValidationError
 from PIL import Image, ImageOps
+from flask_wtf.form import Form
+from wtforms.fields import BooleanField, StringField, PasswordField
+from wtforms.validators import DataRequired, ValidationError
+
+
+class UploadImageForm(Form):
+    """
+    Form used for image deletion on the image list view
+    """
+    to_delete = BooleanField(label='Image to be deleted', default=False)
+
+
+class LoginForm(Form):
+    """
+    Login form
+    """
+    user_name = StringField(label="User name", validators=[DataRequired()])
+    password = PasswordField(label="Password", validators=[DataRequired()])
+
+    def validate_login(self, _):
+        """
+        """
+        user = db.session.query(User).filter(User.username == self.user_name.data).first()
+        if user is None:
+            raise ValidationError('Invalid user')
+        if not user.check_password(self.password.data):
+            raise ValidationError('Invalid password')
+
+
+class RegistrationForm(Form):
+    """
+    Registration form
+    """
+    user_name = StringField(label="User name", validators=[DataRequired()])
+    password = PasswordField(label="Password", validators=[DataRequired()])
+
+    def check_duplicates(self, _):
+        """
+        """
+        if db.session.query(User).filter(User.username == self.user_name.data).count() > 0:
+            raise ValidationError('Duplicate username')
 
 
 @app.route('/list', methods=['GET'])
 @app.route('/list/<int:page>', methods=['GET'])
 @login_required
 def list_images(page=1):
+    """
+    Image list view
+    Main view of the application
+    :param page:
+    :return:
+    """
     form = UploadImageForm()
     images_ids = UploadedImage.query.with_entities(UploadedImage.id, UploadedThumbnail.id).join(
-        UploadedThumbnail).paginate(page, app.config[
-        "IMAGES_PER_PAGE"], False)
+        UploadedThumbnail).paginate(page, app.config["IMAGES_PER_PAGE"], False)
     return render_template('list.html',
                            title='Images listing',
                            images_ids=images_ids,
@@ -31,79 +72,100 @@ def list_images(page=1):
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload():
+    """
+    Route used for file upload
+    A thumbnail is generated from the uploaded image
+    :return:
+    """
     form = UploadImageForm()
     if form.validate_on_submit():
         for number, file in enumerate(request.files.getlist('uploaded_images')):
             if file:
                 image_name = secure_filename(file.filename)
-                fake_file = BytesIO()
-                file.save(fake_file)
-                fake_file.seek(0)
-                image_thumbnail = generate_thumbnail(image_name, fake_file)
-                fake_file.seek(0)
-                image_to_save = UploadedImage(image_name, fake_file.read())
-                image_to_save.thumbnail = image_thumbnail
-                db.session.add(image_to_save)
-                flash('Image {} uploaded'.format(image_name), 'info')
-                if number % app.config["IMAGES_PER_PAGE"] == 0:
-                    db.session.commit()
-        db.session.commit()
+                image_in_db = UploadedImage.query.filter(UploadedImage.file_name == image_name).first()
+                if image_in_db:
+                    flash("image {} is already in DB".format(image_name))
+                else:
+                    fake_file = BytesIO()
+                    file.save(fake_file)
+                    fake_file.seek(0)
+                    image_thumbnail = _generate_thumbnail(image_name, fake_file)
+                    fake_file.seek(0)
+                    image_to_save = UploadedImage(image_name, fake_file.read())
+                    image_to_save.thumbnail = image_thumbnail
+                    db.session.add(image_to_save)
+                    flash('Image {} uploaded'.format(image_name), 'info')
+                    if number % app.config["IMAGES_PER_PAGE"] == 0:
+                        db.session.commit()
+                db.session.commit()
     return redirect(url_for('list_images'))
 
 
 @app.route('/delete', methods=['POST'])
 @login_required
 def delete_images():
+    """
+    Delete image route
+    :return:
+    """
     ids = request.form.getlist('ids')
-    images_to_delete = UploadedImage.query.filter(UploadedImage.id.in_(ids)).all()
-    for number, image_to_delete in enumerate(images_to_delete):
-        db.session.delete(image_to_delete)
-        if number % app.config["IMAGES_PER_PAGE"] == 0:
-                    db.session.commit()
-    db.session.commit()
+    if ids:
+        images_to_delete = UploadedImage.query.filter(UploadedImage.id.in_(ids)).all()
+        for number, image_to_delete in enumerate(images_to_delete):
+            db.session.delete(image_to_delete)
+            if number % app.config["IMAGES_PER_PAGE"] == 0:
+                db.session.commit()
+        db.session.commit()
     return redirect(url_for('list_images'))
 
 
 @app.route('/image/<int:image_id>', methods=['GET'])
 @login_required
 def image(image_id):
-    uploaded_image = _get_image_or_404(image_id)
+    """
+    Get image route
+    Used on the image list view to serve images files
+    :param image_id:
+    :return:
+    """
+    uploaded_image = UploadedImage.query.filter_by(id=image_id).first_or_404()
     return send_file(BytesIO(uploaded_image.file), attachment_filename=uploaded_image.file_name)
-
-
-def _get_image_or_404(image_id):
-    try:
-        return UploadedImage.query.filter_by(id=image_id).one()
-    except exc.NoResultFound or exc.MultipleResultsFound:
-        abort(404)
 
 
 @app.route('/thumbnail/<int:thumbnail_id>', methods=['GET'])
 @login_required
 def thumbnail(thumbnail_id):
-    uploaded_thumbnail = _get_thumbnail_or_404(thumbnail_id)
+    """
+    Get thumbnail route
+    Used on the image list view to serve thumbnails files
+    :param thumbnail_id:
+    :return:
+    """
+    uploaded_thumbnail = UploadedThumbnail.query.filter_by(id=thumbnail_id).first_or_404()
     return send_file(BytesIO(uploaded_thumbnail.file), attachment_filename=uploaded_thumbnail.file_name)
-
-
-def _get_thumbnail_or_404(image_id):
-    try:
-        return UploadedThumbnail.query.filter_by(id=image_id).one()
-    except exc.NoResultFound or exc.MultipleResultsFound:
-        abort(404)
 
 
 @login_manager.user_loader
 def load_user(user_id):
+    """
+    Helper function called by Flask-Login
+    :param user_id:
+    :return:
+    """
     user = User.query.filter(User.id == user_id).first()
     return user
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    """
+    Registration route used with  the RegistrationForm
+    :return:
+    """
     form = RegistrationForm()
     if form.validate_on_submit():
         try:
-            form.validate_login(None)
+            form.check_duplicates(None)
         except ValidationError as err:
             flash("Registration failed : {}".format(err), "info")
             return redirect(url_for('register'))
@@ -118,6 +180,10 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    """
+    Registration route used with  the LoginForm
+    :return:
+    """
     if g.user is not None and g.user.is_authenticated():
         return redirect(url_for('list_images'))
     form = LoginForm()
@@ -137,16 +203,31 @@ def login():
 
 @app.route('/logout')
 def logout():
+    """
+    Logout route
+    :return:
+    """
     logout_user()
     return redirect(url_for('login'))
 
 
 @app.before_request
 def before_request():
+    """
+    helper function trigger before managing a request
+    used to find if an user is already logged or not (=> current_user is None)
+    :return:
+    """
     g.user = current_user
 
 
-def generate_thumbnail(filename, content):
+def _generate_thumbnail(filename, content):
+    """
+    Generate thumbnail from the given image using Pillow
+    :param filename:
+    :param content:
+    :return:
+    """
     extension = filename.split(".")[-1]
 
     if extension == "jpg":
@@ -155,11 +236,15 @@ def generate_thumbnail(filename, content):
     if extension.upper() not in ['GIF', 'JPEG', 'PNG', 'BMP']:
         return None
 
-    image_to_work_on = Image.open(content)
-    thumb = ImageOps.fit(image_to_work_on, (app.config["SIZE"]), Image.ANTIALIAS)
-
-    fake_file = BytesIO()
-    thumb.save(fake_file, format=extension)
-    fake_file.seek(0)
+    try:
+        image_to_work_on = Image.open(content)
+        thumb = ImageOps.fit(image_to_work_on, (app.config["SIZE"]), Image.ANTIALIAS)
+    except Exception as err:
+        flash("Error {} as occured while converting image {} to thumbnail".format(err, filename))
+        return None
+    else:
+        fake_file = BytesIO()
+        thumb.save(fake_file, format=extension)
+        fake_file.seek(0)
 
     return UploadedThumbnail(filename, fake_file.read())

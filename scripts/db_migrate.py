@@ -3,6 +3,7 @@ __author__ = 'lolo'
 
 #!flask/bin/python
 import imp
+
 from migrate.versioning import api
 from Viewer import db
 from Viewer.config import ProdConfiguration

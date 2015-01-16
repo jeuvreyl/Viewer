@@ -1,8 +1,6 @@
 from sqlalchemy import *
-from migrate import *
 
 
-from migrate.changeset import schema
 pre_meta = MetaData()
 post_meta = MetaData()
 uploaded_thumbnail = Table('uploaded_thumbnail', pre_meta,

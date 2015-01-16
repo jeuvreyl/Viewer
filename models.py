@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 class UploadedImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    file_name = db.Column(db.String(128), index=True, unique=True)
+    file_name = db.Column(db.String(128), unique=True)
     file = db.Column(db.LargeBinary())
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     thumbnail = db.relationship("UploadedThumbnail", backref="uploaded_image", uselist=False, cascade="all, delete, delete-orphan")
@@ -15,10 +15,13 @@ class UploadedImage(db.Model):
         self.file_name = file_name
         self.file = file
 
+    def __repr__(self):
+        return "<image {}>".format(self.file_name)
+
 
 class UploadedThumbnail(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    file_name = db.Column(db.String(128), index=True, unique=True)
+    file_name = db.Column(db.String(128), unique=True)
     file = db.Column(db.LargeBinary())
     uploadedImage_id = db.Column(db.Integer,  db.ForeignKey('uploaded_image.id'))
 
@@ -26,11 +29,14 @@ class UploadedThumbnail(db.Model):
         self.file_name = file_name
         self.file = file
 
+    def __repr__(self):
+        return "<thumbnail {}>".format(self.file_name)
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(128), index=True, unique=True)
-    password = db.Column(db.String(128), index=True)
+    username = db.Column(db.String(128), unique=True)
+    password = db.Column(db.String(128))
     images = db.relationship("UploadedImage", backref="user", lazy="dynamic")
 
     def __init__(self, username, password):

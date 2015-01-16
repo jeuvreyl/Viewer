@@ -2,10 +2,12 @@ __author__ = 'lolo'
 
 
 #!flask/bin/python
+import os.path
+
 from migrate.versioning import api
 from Viewer.config import ProdConfiguration
 from Viewer import db
-import os.path
+
 
 SQLALCHEMY_DATABASE_URI = ProdConfiguration.SQLALCHEMY_DATABASE_URI
 SQLALCHEMY_MIGRATE_REPO = ProdConfiguration.SQLALCHEMY_MIGRATE_REPO
