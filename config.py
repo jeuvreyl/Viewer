@@ -5,9 +5,10 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 
 class BaseConfiguration:
-    SIZE = 120, 120
-    IMAGE_TEMP_FOLDER = os.path.join(basedir, "temp\\")
+    SIZE = 200, 200
     COMMIT_STEP = 50
+    PLACEHOLDER_FOLDER = os.path.join(basedir, 'static/media')
+    PLACEHOLDER_THUMBNAIL_NAME = 'placeholder.gif'
 
 
 class ProdConfiguration(BaseConfiguration):

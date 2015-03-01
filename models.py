@@ -1,3 +1,5 @@
+from flask_login import UserMixin
+
 __author__ = 'lolo'
 
 from Viewer import db
@@ -11,9 +13,10 @@ class UploadedImage(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     thumbnail = db.relationship("UploadedThumbnail", backref="uploaded_image", uselist=False, cascade="all, delete, delete-orphan")
 
-    def __init__(self, file_name, file):
+    def __init__(self, file_name, file, user):
         self.file_name = file_name
         self.file = file
+        self.user = user
 
     def __repr__(self):
         return "<image {}>".format(self.file_name)
@@ -21,7 +24,7 @@ class UploadedImage(db.Model):
 
 class UploadedThumbnail(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    file_name = db.Column(db.String(128), unique=True)
+    file_name = db.Column(db.String(128))
     file = db.Column(db.LargeBinary())
     uploadedImage_id = db.Column(db.Integer,  db.ForeignKey('uploaded_image.id'))
 
@@ -33,7 +36,7 @@ class UploadedThumbnail(db.Model):
         return "<thumbnail {}>".format(self.file_name)
 
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(128), unique=True)
     password = db.Column(db.String(128))
@@ -45,18 +48,6 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password, password)
-
-    def is_authenticated(self):
-        return True
-
-    def is_active(self):
-        return True
-
-    def is_anonymous(self):
-        return False
-
-    def get_id(self):
-        return str(self.id)
 
     def __repr__(self):
         return "<User {}>".format(self.username)

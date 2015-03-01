@@ -10,7 +10,7 @@ from PIL import Image, ImageOps
 from flask_wtf.form import Form
 from wtforms.fields import BooleanField, StringField, PasswordField
 from wtforms.validators import DataRequired, ValidationError
-
+import os
 
 class UploadImageForm(Form):
     """
@@ -61,7 +61,8 @@ def list_images(page=1):
     :return:
     """
     form = UploadImageForm()
-    images_ids = UploadedImage.query.with_entities(UploadedImage.id, UploadedThumbnail.id).join(
+    images_ids = UploadedImage.query.with_entities(UploadedImage.id, UploadedThumbnail.id).filter(
+        UploadedImage.user_id == current_user.id).join(
         UploadedThumbnail).paginate(page, app.config["IMAGES_PER_PAGE"], False)
     return render_template('list.html',
                            title='Images listing',
@@ -91,7 +92,7 @@ def upload():
                     fake_file.seek(0)
                     image_thumbnail = _generate_thumbnail(image_name, fake_file)
                     fake_file.seek(0)
-                    image_to_save = UploadedImage(image_name, fake_file.read())
+                    image_to_save = UploadedImage(image_name, fake_file.read(), current_user)
                     image_to_save.thumbnail = image_thumbnail
                     db.session.add(image_to_save)
                     flash('Image {} uploaded'.format(image_name), 'info')
@@ -108,9 +109,10 @@ def delete_images():
     Delete image route
     :return:
     """
-    ids = request.form.getlist('ids')
-    if ids:
-        images_to_delete = UploadedImage.query.filter(UploadedImage.id.in_(ids)).all()
+    delete_ids = request.form.getlist('delete_ids')
+    if delete_ids:
+        images_to_delete = UploadedImage.query.filter(UploadedImage.id.in_(delete_ids)).filter(
+            UploadedImage.user_id == current_user.id).all()
         for number, image_to_delete in enumerate(images_to_delete):
             db.session.delete(image_to_delete)
             if number % app.config["IMAGES_PER_PAGE"] == 0:
@@ -234,17 +236,25 @@ def _generate_thumbnail(filename, content):
         extension = "jpeg"
 
     if extension.upper() not in ['GIF', 'JPEG', 'PNG', 'BMP']:
-        return None
+        return _get_placeholder()
 
     try:
         image_to_work_on = Image.open(content)
         thumb = ImageOps.fit(image_to_work_on, (app.config["SIZE"]), Image.ANTIALIAS)
     except Exception as err:
         flash("Error {} as occured while converting image {} to thumbnail".format(err, filename))
-        return None
+        return _get_placeholder()
     else:
         fake_file = BytesIO()
         thumb.save(fake_file, format=extension)
         fake_file.seek(0)
 
     return UploadedThumbnail(filename, fake_file.read())
+
+
+def _get_placeholder():
+    placeholder_name = app.config["PLACEHOLDER_THUMBNAIL_NAME"]
+    placeholder_full_path = os.path.join(app.config["PLACEHOLDER_FOLDER"], placeholder_name)
+    with open(placeholder_full_path, "rb") as f:
+        file_content = f.read()
+    return UploadedThumbnail(placeholder_name, file_content)

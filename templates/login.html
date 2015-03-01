@@ -1,20 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="panel panel-default">
-    <div class="panel-body text-center center-block">
-        <form action="/login" method="post">
-            <div class="form-group">
-                {{ form.hidden_tag() }}
-                <label for="user_name" class="col-md-2 control-label">User name</label>
-                {{form.user_name}}
-            </div>
-            <div class="form-group">
-                <label for="password" class="col-md-2 control-label">Password</label>
-                {{form.password}}
-            </div>
-            <input type="submit" value="login" class="btn btn-default"/>
-            <a href="{{ url_for('register') }}" class="btn btn-default">Register</a>
-        </form>
-    </div>
+<div class="text-center center-block">
+    <form action="/login" method="post">
+        <div class="form-group">
+            {{ form.hidden_tag() }}
+            <label for="user_name" class="control-label">User name</label>
+            {{form.user_name}}
+        </div>
+        <div class="form-group">
+            <label for="password" class="control-label">Password</label>
+            {{form.password}}
+        </div>
+        <input type="submit" value="login" class="btn btn-default"/>
+        <a href="{{ url_for('register') }}" class="btn btn-default">Register</a>
+    </form>
 </div>
 {% endblock %}

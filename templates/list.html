@@ -37,33 +37,37 @@
     <!-- /.modal-dialog -->
 </div>
 <!-- /.modal -->
-<div class="panel panel-default">
-    <form action="/delete" method="post">
-        <ul class="row">
-            {% for image_id, thumbnail_id in images_ids.items %}
-            <li class="col-lg-2 col-md-2 col-sm-3 col-xs-4">
-                <a href="#" class="thumbnail">
-                    <div class="image">
-                        <input type="checkbox" name="ids" value=" {{ image_id }}"/>
-                        <img id="image_number_{{ image_id }}" class="img-responsive"
-                             src="{{ url_for('thumbnail', thumbnail_id=thumbnail_id) }} "
-                             alt="{{ url_for('image', image_id=image_id) }} "/>
-                    </div>
-                </a>
-            </li>
-            {% endfor %}
-        </ul>
-        <button id="uploadButton" type="button" class="btn btn-default">add images</button>
-        <input type="submit" value="delete selected images" class="btn btn-default"/>
-        {% if images_ids.has_prev %}
-        <a href="{{ url_for('list_images', page=1) }}" class="btn btn-default">Back to First Page</a>
-        <a href="{{ url_for('list_images', page=images_ids.prev_num) }}" class="btn btn-default">Previous Page</a>
-        {% endif %}
-        {% if images_ids.has_next %}
-        <a href="{{ url_for('list_images', page=images_ids.next_num) }}" class="btn btn-default">Next Page</a>
-        {% endif %}
-    </form>
-</div>
+<form action="/delete" method="post">
+    <div class="row">
+        <div class="col-md-2">
+            <button id="uploadButton" type="button" class="btn btn-default">add images</button>
+            {% if images_ids.has_prev %}
+            <a href="{{ url_for('list_images', page=1) }}" class="btn btn-default">Back to First Page</a>
+            <a href="{{ url_for('list_images', page=images_ids.prev_num) }}" class="btn btn-default">Previous Page</a>
+            {% endif %}
+            {% if images_ids.has_next %}
+            <a href="{{ url_for('list_images', page=images_ids.next_num) }}" class="btn btn-default">Next Page</a>
+            {% endif %}
+            <input type="submit" value="delete selected images" name="delete_ids" class="btn btn-default"/>
+        </div>
+        <div class="col-md-10">
+            <ul class="row">
+                {% for image_id, thumbnail_id in images_ids.items %}
+                <li class="col-lg-2 col-md-2 col-sm-3 col-xs-6">
+                    <a href="#" class="thumbnail">
+                        <div class="image">
+                            <input type="checkbox" name="delete_ids" value=" {{ image_id }}"/>
+                            <img id="image_number_{{ image_id }}" class="img-responsive"
+                                 src="{{ url_for('thumbnail', thumbnail_id=thumbnail_id) }} "
+                                 alt="{{ url_for('image', image_id=image_id) }} "/>
+                        </div>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</form>
 <script>
     $(document).ready(function(){
 
@@ -84,10 +88,6 @@
                 $('#uploadModal').modal();
                });
         })
-
-
-
-
 
 
 </script>
